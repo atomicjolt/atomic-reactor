@@ -15,9 +15,8 @@ const shouldLint = argv.lint;
 let rootOutput = argv.rootOutput;
 const configDir = argv.configDir;
 const hot = argv.hot;
-const codeSplittingOff = argv.codeSplittingOff || hot;
-const extractCssOff = argv.extractCssOff || hot;
-
+const codeSplittingOff = argv.codeSplittingOff;
+const extractCssOff = argv.extractCssOff;
 
 let appPerPort = true;
 let onlyPack = false;
@@ -49,10 +48,11 @@ const options = {
   shouldLint,
   stage: hot ? 'hot' : 'development',
   onlyPack,
-  port:
   hotPort,
   rootOutput,
-  appPerPort
+  appPerPort,
+  codeSplittingOff,
+  extractCssOff,
 };
 
 function setupMiddleware(serverApp, compiler) {

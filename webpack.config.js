@@ -173,7 +173,7 @@ module.exports = function webpackConfig(app, options = {}) {
     // Add hot reload to entry
     entry[app.name] = [
       'eventsource-polyfill',
-      `webpack-hot-middleware/client?name=${app.name}`,
+      `webpack-hot-middleware/client?name=${app.name}&path=${app.publicPath}/__webpack_hmr`,
       entryPath
     ];
   }
