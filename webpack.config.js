@@ -1,6 +1,6 @@
 const webpack              = require('webpack');
 const path                 = require('path');
-const ExtractTextPlugin    = require('extract-text-webpack-plugin');
+const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const ChunkManifestPlugin  = require('chunk-manifest-webpack-plugin');
 const BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPlugin;
 const AssetsPlugin         = require('assets-webpack-plugin');
@@ -32,19 +32,21 @@ function customMerger(objValue, srcValue) {
 
 module.exports = function webpackConfig(app, options = {}) {
 
-  const jsLoaders = ['babel-loader'];
-  if (app.shouldLint) {
-    jsLoaders.push('atomic-lint-loader');
-  }
+  const jsLoaders = [{
+    loader: 'babel-loader',
+    options: {
+      configFile: path.join(app.path, '../../.babelrc'),
+    }
+  }];
 
   const cssLoaders = [
     {
       loader: 'css-loader',
       options: {
         sourceMap: outputSourceMaps,
-        includePaths: [
-          `${app.path}/node_modules`
-        ],
+        // includePaths: [
+        //   `${app.path}/node_modules`
+        // ],
         import: true,
         importLoaders: 1
       }
@@ -79,35 +81,37 @@ module.exports = function webpackConfig(app, options = {}) {
   });
   scssLoaders[0].options.importLoaders = 2;
 
-  const lessLoaders = cssLoaders.slice(0);
-  lessLoaders.push({
-    loader: 'less-loader',
-    options: {
-      sourceMap: outputSourceMaps,
-      includePaths: [
-        `${app.path}/node_modules`
-      ]
-    }
-  });
-  lessLoaders[0].options.importLoaders = 2;
+  // const lessLoaders = cssLoaders.slice(0);
+  // lessLoaders.push({
+  //   loader: 'less-loader',
+  //   options: {
+  //     sourceMap: outputSourceMaps,
+  //     includePaths: [
+  //       `${app.path}/node_modules`
+  //     ]
+  //   }
+  // });
+  // lessLoaders[0].options.importLoaders = 2;
 
-  const extractCSS = new ExtractTextPlugin(app.production ? '[name]-[chunkhash].css' : '[name].css');
+  const extractCSS = new MiniCssExtractPlugin({
+    fileName: app.production ? '[name]-[hash].css' : '[name].css'
+  });
 
   let plugins = [];
 
-  if (!app.options.codeSplittingOff) {
-    plugins = _.concat(plugins, [
-      // Use to extract common code from multiple entry points into a single init.js
-      new webpack.optimize.CommonsChunkPlugin({
-        name: `${app.name}_vendor`,
-        minChunks: module => module.context && module.context.indexOf('node_modules') !== -1
-      }),
-      new webpack.optimize.CommonsChunkPlugin({
-        name: `${app.name}_manifest`,
-        minChunks: Infinity
-      }),
-    ]);
-  }
+  // if (!app.options.codeSplittingOff) {
+  //   plugins = _.concat(plugins, [
+  //     // Use to extract common code from multiple entry points into a single init.js
+  //     new webpack.optimize.CommonsChunkPlugin({
+  //       name: `${app.name}_vendor`,
+  //       minChunks: module => module.context && module.context.indexOf('node_modules') !== -1
+  //     }),
+  //     new webpack.optimize.CommonsChunkPlugin({
+  //       name: `${app.name}_manifest`,
+  //       minChunks: Infinity
+  //     }),
+  //   ]);
+  // }
 
   plugins = _.concat(plugins, [
     // Generate webpack-assets.json to map path to assets generated with hashed names
@@ -119,6 +123,12 @@ module.exports = function webpackConfig(app, options = {}) {
   ]);
 
   if (!app.options.extractCssOff) {
+    cssLoaders.unshift({
+      loader: MiniCssExtractPlugin.loader,
+    });
+    scssLoaders.unshift({
+      loader: MiniCssExtractPlugin.loader,
+    })
     plugins.push(extractCSS);
   }
 
@@ -133,9 +143,6 @@ module.exports = function webpackConfig(app, options = {}) {
   if (app.production) {
     plugins = _.concat(plugins, [
       new webpack.DefinePlugin({ 'process.env.NODE_ENV': '"production"', __DEV__: false }),
-      new webpack.optimize.UglifyJsPlugin({
-        sourceMap: true
-      }),
       new webpack.optimize.AggressiveMergingPlugin(),
       new ChunkManifestPlugin({
         filename: `${app.name}-webpack-common-manifest.json`,
@@ -149,7 +156,6 @@ module.exports = function webpackConfig(app, options = {}) {
   } else if (app.stage === 'hot') {
     plugins = _.concat(plugins, [
       new webpack.HotModuleReplacementPlugin(),
-      new webpack.NoEmitOnErrorsPlugin(),
     ]);
   }
 
@@ -157,9 +163,9 @@ module.exports = function webpackConfig(app, options = {}) {
   const rules = [
     { test: /\.js$/, use: jsLoaders, exclude: /node_modules/ },
     { test: /\.jsx?$/, use: jsLoaders, exclude: /node_modules/ },
-    { test: /\.s[ac]ss$/i, use: app.options.extractCssOff ? scssLoaders : extractCSS.extract(scssLoaders) },
-    { test: /\.css$/i, use: app.options.extractCssOff ? cssLoaders : extractCSS.extract(cssLoaders) },
-    { test: /\.less$/i, use: app.options.extractCssOff ? lessLoaders : extractCSS.extract(lessLoaders) },
+    { test: /\.s[ac]ss$/i, use: scssLoaders },
+    { test: /\.css$/i, use: cssLoaders },
+    // { test: /\.less$/i, use: app.options.extractCssOff ? lessLoaders : extractCSS.extract(lessLoaders) },
     { test: /.*\.(gif|png|jpg|jpeg|svg)$/, use: ['url-loader?limit=500&hash=sha512&digest=hex&size=16&name=[name]-[hash].[ext]'] },
     { test: /.*\.(eot|woff2|woff|ttf)$/, use: ['url-loader?limit=500&hash=sha512&digest=hex&size=16&name=[name]-[hash].[ext]'] },
     { test: /\.tpl$/, loader: 'lodash-template-webpack-loader' },
